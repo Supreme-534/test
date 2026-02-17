@@ -53,6 +53,44 @@ class MediaViewer:
         self.pan_start_x = 0
         self.pan_start_y = 0
         self.is_dragging = False
+
+    def on_mouse_wheel(self, event):
+        """Mouse wheel zoom handler for Windows/Linux."""
+        if not self.current_image or self.video_playing:
+            return
+
+        # Linux sends Button-4/Button-5 events, Windows uses delta
+        if getattr(event, 'num', None) == 4:
+            factor = ZOOM_FACTOR
+        elif getattr(event, 'num', None) == 5:
+            factor = 1 / ZOOM_FACTOR
+        else:
+            delta = getattr(event, 'delta', 0)
+            factor = ZOOM_FACTOR if delta > 0 else (1 / ZOOM_FACTOR)
+
+        self.zoom_engine.zoom_to_point(factor, event.x, event.y, animate=True)
+
+    def on_pan_start(self, event):
+        """Start image pan drag."""
+        if not self.current_image or self.video_playing:
+            return
+
+        self.is_dragging = True
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+
+    def on_pan_drag(self, event):
+        """Pan image while dragging mouse."""
+        if not self.is_dragging or not self.current_image or self.video_playing:
+            return
+
+        dx = event.x - self.pan_start_x
+        dy = event.y - self.pan_start_y
+
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+
+        self.zoom_engine.pan(dx, dy)
     
     def load_media(self, file_info):
         """Load image or video"""
