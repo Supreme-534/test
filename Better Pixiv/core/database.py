@@ -31,16 +31,17 @@ class Database:
         old_points = {}
         old_nice = {}
         
+        # FIX #3: Handle both old format (user}-12345_3.jpg) and standard format (12345_p0.jpg)
         for filename, value in self.points_db.items():
-            if '_p' in filename:
-                post_id = filename.split('_p')[0]
+            post_id = self._extract_post_id(filename)
+            if post_id and post_id != filename:  # If we extracted a different ID, it's old format
                 if post_id not in old_points:
                     old_points[post_id] = 0
                 old_points[post_id] += value
         
         for filename, value in self.nice_db.items():
-            if '_p' in filename:
-                post_id = filename.split('_p')[0]
+            post_id = self._extract_post_id(filename)
+            if post_id and post_id != filename:  # If we extracted a different ID, it's old format
                 if post_id not in old_nice:
                     old_nice[post_id] = 0
                 # Take maximum nice value for post
@@ -63,6 +64,46 @@ class Database:
             self._save(self.points_db, POINTS_FILE)
             self._save(self.nice_db, NICE_FILE)
             print("Migration complete!")
+    
+    def _extract_post_id(self, filename):
+        """
+        Extract post ID from filename
+        FIX #3: Handle multiple formats:
+        - Standard: 12345678_p0-title-artist-12345.ext -> 12345678
+        - Old: user}-12345678_3.jpg -> 12345678
+        - Already migrated: 12345678 -> 12345678
+        """
+        import re
+        
+        # If it's already just digits, it's already migrated
+        if filename.isdigit():
+            return filename
+        
+        # Remove file extension if present
+        base_name = filename.split('.')[0]
+        
+        # Pattern 1: Standard format with _p (12345678_p0...)
+        if '_p' in base_name:
+            match = re.match(r'^(\d+)_p', base_name)
+            if match:
+                return match.group(1)
+        
+        # Pattern 2: Old format (user}-12345678_3 or user}-12345678)
+        if base_name.startswith('user}-'):
+            # Remove the "user}-" prefix
+            after_prefix = base_name[6:]  # Skip "user}-"
+            # Extract leading digits
+            match = re.match(r'^(\d+)', after_prefix)
+            if match:
+                return match.group(1)
+        
+        # Pattern 3: Any filename with leading digits
+        match = re.match(r'^(\d+)', base_name)
+        if match:
+            return match.group(1)
+        
+        # Can't extract post ID
+        return None
     
     def get_points(self, post_id):
         """Get points for a post"""

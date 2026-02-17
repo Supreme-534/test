@@ -9,7 +9,7 @@ def parse_filename(filename):
     1. Standard: 12345678_p0-title-artist-12345.ext
     2. Variations: 12345678_p0-title-artist.ext
     3. Minimal: 12345678_p0.ext
-    4. Video files with any pattern
+    4. Video format: 12345678-title-artist-12345.ext (no _p0)
     """
     name, ext = os.path.splitext(filename)
     ext_lower = ext.lower()
@@ -17,21 +17,23 @@ def parse_filename(filename):
     # Check if it's a video FIRST
     is_video = any(ext_lower == video_ext.lower() for video_ext in SUPPORTED_VIDEO_EXTS)
     
-    # Debug for video files
-    if is_video and DEBUG_MODE:  # Only print in debug mode
-        print(f"VIDEO DETECTED: {filename}")
-    
     # Try multiple patterns in order of specificity
     patterns = [
-        # Standard full pattern
+        # Standard full pattern with _p
         r'^(\d+)_p(\d+)-(.+)-(.+)-(\d+)$',
-        # Missing artist_id
+        # Video format WITHOUT _p: 12345-title-artist-12345
+        r'^(\d+)-(.+)-(.+)-(\d+)$',
+        # Missing artist_id with _p
         r'^(\d+)_p(\d+)-(.+)-(.+)$',
-        # Just title
+        # Video format without _p, no artist_id: 12345-title-artist
+        r'^(\d+)-(.+)-(.+)$',
+        # Just title with _p
         r'^(\d+)_p(\d+)-(.+)$',
+        # Video with just title: 12345-title
+        r'^(\d+)-(.+)$',
         # Just post_id and page
         r'^(\d+)_p(\d+)$',
-        # Just post_id
+        # Just post_id with _p
         r'^(\d+)_p',
         # Any pattern starting with numbers
         r'^(\d+)'
@@ -54,18 +56,40 @@ def parse_filename(filename):
                     'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
                     'is_video': is_video
                 }
-            elif pattern_idx == 1:  # 123_p0-title-artist
+            elif pattern_idx == 1:  # Video: 123-title-artist-12345
+                return {
+                    'post_id': groups[0],
+                    'page': 0,
+                    'title': groups[1],
+                    'artist': groups[2],
+                    'artist_id': groups[3],
+                    'filename': filename,
+                    'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
+                    'is_video': is_video
+                }
+            elif pattern_idx == 2:  # 123_p0-title-artist
                 return {
                     'post_id': groups[0],
                     'page': int(groups[1]),
                     'title': groups[2],
                     'artist': groups[3],
-                    'artist_id': groups[3],  # Use artist name as ID
+                    'artist_id': groups[3],
                     'filename': filename,
                     'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
                     'is_video': is_video
                 }
-            elif pattern_idx == 2:  # 123_p0-title
+            elif pattern_idx == 3:  # Video: 123-title-artist
+                return {
+                    'post_id': groups[0],
+                    'page': 0,
+                    'title': groups[1],
+                    'artist': groups[2],
+                    'artist_id': groups[2],
+                    'filename': filename,
+                    'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
+                    'is_video': is_video
+                }
+            elif pattern_idx == 4:  # 123_p0-title
                 return {
                     'post_id': groups[0],
                     'page': int(groups[1]),
@@ -76,7 +100,18 @@ def parse_filename(filename):
                     'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
                     'is_video': is_video
                 }
-            elif pattern_idx == 3:  # 123_p0
+            elif pattern_idx == 5:  # Video: 123-title
+                return {
+                    'post_id': groups[0],
+                    'page': 0,
+                    'title': groups[1],
+                    'artist': 'Unknown',
+                    'artist_id': 'unknown',
+                    'filename': filename,
+                    'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
+                    'is_video': is_video
+                }
+            elif pattern_idx == 6:  # 123_p0
                 return {
                     'post_id': groups[0],
                     'page': int(groups[1]),
@@ -87,7 +122,7 @@ def parse_filename(filename):
                     'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
                     'is_video': is_video
                 }
-            elif pattern_idx == 4:  # 123_p (incomplete)
+            elif pattern_idx == 7:  # 123_p (incomplete)
                 return {
                     'post_id': groups[0],
                     'page': 0,
@@ -98,7 +133,7 @@ def parse_filename(filename):
                     'full_path': os.path.join(FIXED_FOLDER_PATH, filename),
                     'is_video': is_video
                 }
-            elif pattern_idx == 5:  # Just numbers
+            elif pattern_idx == 8:  # Just numbers
                 return {
                     'post_id': groups[0],
                     'page': 0,
@@ -111,7 +146,8 @@ def parse_filename(filename):
                 }
     
     # If no pattern matches at all, create minimal entry
-    print(f"WARNING: Could not parse filename: {filename}")
+    if is_video:
+        print(f"WARNING: Could not parse video: {filename}")
     return {
         'post_id': 'unknown',
         'page': 0,

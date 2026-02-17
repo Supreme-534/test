@@ -113,7 +113,6 @@ class MainWindow:
             for i, post_id in enumerate(self.random_list):
                 if post_id in video_posts:
                     video_indices.append(i)
-                    print(f"  Found video at index {i}: {post_id}")
             
             if video_indices:
                 # Pick first video in random list
@@ -137,16 +136,16 @@ class MainWindow:
     def handle_right_arrow(self):
         """Right arrow - next in current mode"""
         if self.in_artist_menu:
-            next_post_id = self.artist_menu.next_work()
-            if next_post_id:
-                self.load_work(next_post_id)
+            # We're viewing the artist thumbnail grid - arrows do NOTHING
             return
         elif self.state.mode == 'artist' and self.state.artist_works:
+            # We selected a work from artist menu and are browsing that artist's works
             next_post_id = self.state.next_in_artist_mode()
             if next_post_id:
                 self.load_work(next_post_id)
             return
         else:
+            # Random mode
             if not self.random_list:
                 return
             
@@ -156,16 +155,16 @@ class MainWindow:
     def handle_left_arrow(self):
         """Left arrow - previous in current mode"""
         if self.in_artist_menu:
-            prev_post_id = self.artist_menu.prev_work()
-            if prev_post_id:
-                self.load_work(prev_post_id)
+            # We're viewing the artist thumbnail grid - arrows do NOTHING
             return
         elif self.state.mode == 'artist' and self.state.artist_works:
+            # We selected a work from artist menu and are browsing that artist's works
             prev_post_id = self.state.prev_in_artist_mode()
             if prev_post_id:
                 self.load_work(prev_post_id)
             return
         else:
+            # Random mode
             if not self.random_list:
                 return
             
@@ -174,42 +173,27 @@ class MainWindow:
     
     def load_work(self, post_id):
         """Load a specific work"""
-        print(f"\nLoading work: {post_id}")
-        
         work_files = self.file_manager.get_post_files(post_id)
         if not work_files:
-            print(f"ERROR: No files found for post: {post_id}")
             return
         
-        print(f"Found {len(work_files)} files for post {post_id}")
-        
         self.state.set_work(post_id, work_files)
-        
-        # Force UI update before loading media
         self.root.update_idletasks()
-        
-        # Update display
         self.update_display()
         
-        # Update current index
         if post_id in self.random_list:
             self.current_random_index = self.random_list.index(post_id)
-            print(f"Current random index: {self.current_random_index}")
     
     def update_display(self):
         """Update all UI elements for current work"""
         current_file = self.state.get_current_file()
         if not current_file:
-            print("ERROR: No current file in state!")
             return
-        
-        print(f"Updating display for: {current_file['filename']}")
         
         # Load media
         success = self.media_viewer.load_media(current_file)
         
         if not success:
-            print(f"ERROR: Failed to load media: {current_file['filename']}")
             # Try to load next work
             self.root.after(100, self.handle_right_arrow)
             return
@@ -224,10 +208,7 @@ class MainWindow:
         
         # Update controls
         self.controls.update_info()
-        
-        # Force UI refresh
         self.root.update_idletasks()
-        print("Display update complete")
     
     def on_page_select(self, page_idx):
         """Handle page selection from sidebar"""
@@ -297,7 +278,10 @@ class MainWindow:
         
         self.controls.hide_all()
         
+        # FIX #9: Set flags properly
         self.in_artist_menu = True
+        self.state.mode = 'random'  # Keep in random mode while viewing grid
+        
         self.artist_menu.show(artist_id, artist_name, works)
         
         self.add_back_button()
@@ -321,6 +305,7 @@ class MainWindow:
         if self.back_button and self.back_button.winfo_exists():
             self.back_button.destroy()
         
+        # FIX #9: Clear flags properly
         self.in_artist_menu = False
         self.state.exit_artist_mode()
         
@@ -329,25 +314,31 @@ class MainWindow:
     
     def on_artist_work_select(self, post_id):
         """Handle work selection from artist menu"""
+        # Get artist info BEFORE hiding menu (while current_work still valid)
+        current_file = self.state.get_current_file()
+        if not current_file:
+            return
+        
+        artist_id = current_file['artist_id']
+        works = self.file_manager.get_artist_works(artist_id)
+        
+        # Hide artist menu
         self.artist_menu.hide()
         
         if self.back_button and self.back_button.winfo_exists():
             self.back_button.destroy()
         
+        # Set artist mode PROPERLY
         self.in_artist_menu = False
-        self.state.mode = 'artist'
+        self.state.set_artist_mode(artist_id, works)
         
-        current_file = self.state.get_current_file()
-        if current_file:
-            artist_id = current_file['artist_id']
-            works = self.file_manager.get_artist_works(artist_id)
-            self.state.set_artist_mode(artist_id, works)
-            
-            for idx, work in enumerate(works):
-                if work['post_id'] == post_id:
-                    self.state.artist_work_index = idx
-                    break
+        # Find the index of the selected work
+        for idx, work in enumerate(works):
+            if work['post_id'] == post_id:
+                self.state.artist_work_index = idx
+                break
         
+        # Load the work (this will call set_work properly with work_files)
         self.load_work(post_id)
         self.controls.show_all()
     

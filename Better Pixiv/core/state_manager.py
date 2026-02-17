@@ -37,8 +37,8 @@ class AppState:
         self.artist_works = works
         self.artist_work_index = 0
         
-        if works:
-            self.set_work(works[0]['post_id'], [])
+        # FIX #9: DON'T call set_work here - let main_window handle loading the work
+        # The old code: self.set_work(works[0]['post_id'], []) was causing current_work to be empty
     
     def exit_artist_mode(self):
         """Exit artist mode back to random"""

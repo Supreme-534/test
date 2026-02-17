@@ -79,9 +79,9 @@ class ControlPanel:
     
     def create_counter_panel_horizontal(self):
         """Create points and nice counter panel HORIZONTALLY"""
-        # Main container frame
+        # Main container frame - positioned higher to be ABOVE video controls
         counter_container = tk.Frame(self.root, bg='#2d2d2d')
-        counter_container.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)
+        counter_container.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-70)
         
         # Points section (left side)
         points_frame = tk.Frame(counter_container, bg='#2d2d2d')
@@ -129,7 +129,7 @@ class ControlPanel:
     def create_move_buttons(self):
         """Create SFW and Junko move buttons"""
         move_container = tk.Frame(self.root, bg='#2d2d2d')
-        move_container.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-10)
+        move_container.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-70)
         
         # SFW button (green)
         self.sfw_btn = tk.Button(move_container, text="SFW", 
